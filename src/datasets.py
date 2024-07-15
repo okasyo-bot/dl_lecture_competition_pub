@@ -5,6 +5,24 @@ from typing import Tuple
 from termcolor import cprint
 
 
+def preprocess(X):
+
+    def scaling(x):
+        mean = x.mean(dim=-1, keepdim=True)
+        std = x.std(dim=-1, keepdim=True)
+        return (x - mean) / std
+
+    def baseline_correction(x):
+        mean = x.mean(dim=-1, keepdim=True)
+        return x - mean
+
+    X = scaling(X)
+    X = baseline_correction(X)
+
+    return X
+
+
+
 class ThingsMEGDataset(torch.utils.data.Dataset):
     def __init__(self, split: str, data_dir: str = "data") -> None:
         super().__init__()
@@ -14,6 +32,8 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         self.num_classes = 1854
         
         self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
+        self.X = preprocess(self.X)
+
         self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
         
         if split in ["train", "val"]:
