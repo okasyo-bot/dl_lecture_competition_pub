@@ -94,13 +94,12 @@ class TransformerClassifier(nn.Module):
 
         self.blocks = nn.Sequential(
             ConvBlock(in_channels, hid_dim),
+            ConvBlock(hid_dim, hid_dim),
             ConvBlock(hid_dim, hid_dim)    # (b, c, t) -> (b, 128, t)
         )
 
 
         self.head = nn.Sequential(
-            ConvBlock(hid_dim, hid_dim),
-            ConvBlock(hid_dim, hid_dim),
             nn.AdaptiveAvgPool1d(1),    # (b, 128, t) -> (b, 128, 1)
             Rearrange("b d 1 -> b d"),  # (b, 128, 1) -> (b, 128)
             nn.Linear(hid_dim, num_classes),    # (b, 128) -> (b, num_classes)
