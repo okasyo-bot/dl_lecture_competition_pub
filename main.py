@@ -11,6 +11,9 @@ from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
+from src.models import TransformerClassifier
+from src.models import MultiheadAttention
+from src.models import OriginalMultiheadAttention
 from src.utils import set_seed
 
 
@@ -22,6 +25,7 @@ def run(args: DictConfig):
     if args.use_wandb:
         wandb.init(mode="online", dir=logdir, project="MEG-classification")
 
+    print("start data loader")
     # ------------------
     #    Dataloader
     # ------------------
@@ -29,19 +33,28 @@ def run(args: DictConfig):
     
     train_set = ThingsMEGDataset("train", args.data_dir)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+    print("train data loaded")
     val_set = ThingsMEGDataset("val", args.data_dir)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
+    print("val data loaded")
     test_set = ThingsMEGDataset("test", args.data_dir)
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
+    print("test data loaded")
 
     # ------------------
     #       Model
     # ------------------
+    """
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
+    """
+    model = TransformerClassifier(
+        train_set.num_classes, train_set.seq_len, train_set.num_channels
+    ).to(args.device)
+    print("model setted")
 
     # ------------------
     #     Optimizer
@@ -63,11 +76,16 @@ def run(args: DictConfig):
         
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
-            X, y = X.to(args.device), y.to(args.device)
+            X, y, subject_idxs = X.to(args.device), y.to(args.device), subject_idxs.to(args.device)
 
-            y_pred = model(X)
+            y_pred = model(X, subject_idxs)
+
+            # L1正則化項を計算
+            l2_lambda = 0.01  # 正則化の強さを決める係数
+            l2_norm = sum(p.pow(2).sum() for p in model.parameters())
             
             loss = F.cross_entropy(y_pred, y)
+            #loss = loss + l2_lambda * l2_norm
             train_loss.append(loss.item())
             
             optimizer.zero_grad()
@@ -79,12 +97,12 @@ def run(args: DictConfig):
 
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
-            X, y = X.to(args.device), y.to(args.device)
+            X, y, subject_idxs = X.to(args.device), y.to(args.device), subject_idxs.to(args.device)
             
             with torch.no_grad():
-                y_pred = model(X)
+                y_pred = model(X, subject_idxs)
             
-            val_loss.append(F.cross_entropy(y_pred, y).item())
+            val_loss.append(F.cross_entropy(y_pred, y).item())  #lossにL1項書き忘れ
             val_acc.append(accuracy(y_pred, y).item())
 
         print(f"Epoch {epoch+1}/{args.epochs} | train loss: {np.mean(train_loss):.3f} | train acc: {np.mean(train_acc):.3f} | val loss: {np.mean(val_loss):.3f} | val acc: {np.mean(val_acc):.3f}")
@@ -103,10 +121,10 @@ def run(args: DictConfig):
     # ----------------------------------
     model.load_state_dict(torch.load(os.path.join(logdir, "model_best.pt"), map_location=args.device))
 
-    preds = [] 
+    preds = []
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+        preds.append(model(X.to(args.device), subject_idxs.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)

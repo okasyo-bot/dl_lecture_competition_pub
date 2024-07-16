@@ -1,6 +1,7 @@
 data/*
 !data/.gitkeep
 
+log/
 outputs/
 preprocess.py
 eval_omnicampus.py
