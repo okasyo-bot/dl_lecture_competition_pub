@@ -79,8 +79,8 @@ def run(args: DictConfig):
             y_pred = model(X, subject_idxs)
 
             # L1正則化項を計算
-            l2_lambda = 0.01  # 正則化の強さを決める係数
-            l2_norm = sum(p.pow(2).sum() for p in model.parameters())
+            #l2_lambda = 0.01  # 正則化の強さを決める係数
+            #l2_norm = sum(p.pow(2).sum() for p in model.parameters())
             
             loss = F.cross_entropy(y_pred, y)
             #loss = loss + l2_lambda * l2_norm
@@ -100,7 +100,7 @@ def run(args: DictConfig):
             with torch.no_grad():
                 y_pred = model(X, subject_idxs)
             
-            val_loss.append(F.cross_entropy(y_pred, y).item())  #lossにL1項書き忘れ
+            val_loss.append(F.cross_entropy(y_pred, y).item())
             val_acc.append(accuracy(y_pred, y).item())
 
         print(f"Epoch {epoch+1}/{args.epochs} | train loss: {np.mean(train_loss):.3f} | train acc: {np.mean(train_acc):.3f} | val loss: {np.mean(val_loss):.3f} | val acc: {np.mean(val_acc):.3f}")
