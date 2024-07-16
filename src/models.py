@@ -82,7 +82,7 @@ class ConvBlock(nn.Module):
 # ------------------
 #    Original
 # ------------------
-class TransformerClassifier(nn.Module):
+class OriginalClassifier(nn.Module):
     def __init__(
         self,
         num_classes: int,
@@ -159,6 +159,7 @@ class ConvBlock(nn.Module):
             X = self.conv0(X)
 
         X = F.gelu(self.batchnorm0(X))
+        X = self.dropout(X)
 
         X = self.conv1(X) + X  # skip connection
         X = F.gelu(self.batchnorm1(X))
@@ -168,62 +169,6 @@ class ConvBlock(nn.Module):
         #X = F.glu(X, dim=-2)
 
         return self.dropout(X)
-
-
-class MultiheadAttention(nn.Module):
-    def __init__(self, in_dim, out_dim, heads=8, dim_head=64, dropout=0.3):
-        super().__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.heads = heads
-        self.dim_head = dim_head
-
-        inner_dim = dim_head * heads
-        self.scaler = self.head_dim ** (1/2)
-
-        self.q = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.k = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.v = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.output = nn.Linear(self.in_dim, self.out_dim)
-        #self.layer_norm = nn.LayerNorm(in_dim)
-        self.attend = nn.Softmax(dim=-1)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, X, mask=None):
-        b, c, t = X.shape
-        #print(X.shape)
-
-        X = X.permute(0, 2, 1)
-        #print(X.shape)
-
-        q = self.q(X)
-        k = self.k(X)
-        v = self.v(X)
-
-        # Split the embedding into self.heads different pieces
-        query = q.reshape(b, t, self.heads, self.head_dim)
-        key = k.reshape(b, t, self.heads, self.head_dim)
-        value = v.reshape(b, t, self.heads, self.head_dim)
-
-        query = query.permute(0, 2, 1, 3)
-        key = key.permute(0, 2, 1, 3)
-        value = value.permute(0, 2, 1, 3)
-
-        dot = torch.einsum("bhqd, bhkd -> bhqk", query, key)
-        attention = torch.softmax(dot / self.scaler, dim=-1)
-
-        out = torch.einsum("bhqk, bhvd -> bhqd", attention, value)
-        out = out.contiguous().view(b, t, self.heads * self.head_dim)
-
-        # 最終的な線形層
-        out = self.output(out)
-        out = self.dropout(out)
-
-        # 元の形状 (batch_size, num_channels, seq_length) に戻す
-        out = out.permute(0, 2, 1)
-
-        return out
-
 
 
 class OriginalMultiheadAttention(nn.Module):

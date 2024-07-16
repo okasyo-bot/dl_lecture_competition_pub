@@ -11,9 +11,7 @@ from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
-from src.models import TransformerClassifier
-from src.models import MultiheadAttention
-from src.models import OriginalMultiheadAttention
+from src.models import OriginalClassifier
 from src.utils import set_seed
 
 
@@ -51,7 +49,7 @@ def run(args: DictConfig):
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
     """
-    model = TransformerClassifier(
+    model = OriginalClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
     print("model setted")
