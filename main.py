@@ -10,7 +10,7 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
+#from src.models import BasicConvClassifier
 from src.models import OriginalClassifier
 from src.utils import set_seed
 
@@ -77,13 +77,8 @@ def run(args: DictConfig):
             X, y, subject_idxs = X.to(args.device), y.to(args.device), subject_idxs.to(args.device)
 
             y_pred = model(X, subject_idxs)
-
-            # L1正則化項を計算
-            #l2_lambda = 0.01  # 正則化の強さを決める係数
-            #l2_norm = sum(p.pow(2).sum() for p in model.parameters())
             
             loss = F.cross_entropy(y_pred, y)
-            #loss = loss + l2_lambda * l2_norm
             train_loss.append(loss.item())
             
             optimizer.zero_grad()

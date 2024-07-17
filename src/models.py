@@ -7,6 +7,7 @@ from einops.layers.torch import Rearrange
 # ------------------
 #    Baseline
 # ------------------
+"""
 class BasicConvClassifier(nn.Module):
     def __init__(
         self,
@@ -29,12 +30,12 @@ class BasicConvClassifier(nn.Module):
         )
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        """_summary_
-        Args:
-            X ( b(batch_size), c(in_channels), t(seq_len) ): _description_
-        Returns:
-            X ( b, num_classes ): _description_
-        """
+        #_summary_
+        #Args:
+        #    X ( b(batch_size), c(in_channels), t(seq_len) ): _description_
+        #Returns:
+        #    X ( b, num_classes ): _description_
+        
         X = self.blocks(X)  # (b, c, t) -> (b, 128, t)
 
         return self.head(X) # (b, 128, t) -> (b, num_classes)
@@ -77,6 +78,7 @@ class ConvBlock(nn.Module):
         # X = F.glu(X, dim=-2)
 
         return self.dropout(X)
+"""
 
 
 # ------------------
@@ -114,7 +116,7 @@ class OriginalClassifier(nn.Module):
         Returns:
             X ( b, num_classes ): _description_
         """
-        #print(X.shape)
+        
         X = self.blocks(X)  # (b, c, t) -> (b, 128, t)
         X = self.attention(X)   # (b, 128, t) -> (b, 128, t)
 
@@ -125,7 +127,6 @@ class OriginalClassifier(nn.Module):
             for j in range(X.shape[1]):
                 idxs[i][j][idx] = 1
         X = torch.cat((X, idxs), 2) # (b, 128, t) -> (b, 128, t+4)
-        #print(X.shape)
         
         return self.head(X) # (b, 128, t+4) -> (b, num_classes)
 
@@ -163,7 +164,6 @@ class ConvBlock(nn.Module):
 
         X = self.conv1(X) + X  # skip connection
         X = F.gelu(self.batchnorm1(X))
-        #X = self.dropout(X)
 
         #X = self.conv2(X)
         #X = F.glu(X, dim=-2)
@@ -189,16 +189,13 @@ class OriginalMultiheadAttention(nn.Module):
 
     def forward(self, X, mask=None):
         b, c, t = X.shape
-        #print(X.shape)
 
         X = X.permute(0, 2, 1)
-        #print(X.shape)
 
         q = self.q(X)
         k = self.k(X)
         v = self.v(X)
 
-        # Split the embedding into self.heads different pieces
         query = q.reshape(b, t, self.heads, self.head_dim)
         key = k.reshape(b, t, self.heads, self.head_dim)
         value = v.reshape(b, t, self.heads, self.head_dim)
@@ -213,11 +210,10 @@ class OriginalMultiheadAttention(nn.Module):
         out = torch.einsum("bhqk, bhvd -> bhqd", attention, value)
         out = out.contiguous().view(b, t, self.heads * self.head_dim)
 
-        # 最終的な線形層
         out = self.output(out)
         out = self.dropout(out)
 
-        # 元の形状 (batch_size, num_channels, seq_length) に戻す
+        # 元の形状に戻す
         out = out.permute(0, 2, 1)
 
         return out
